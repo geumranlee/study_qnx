@@ -42,6 +42,24 @@ cp_from_qnx()
 	scp -P 10022 -r root@192.168.105.100:/$path_source_dir/$path_filename .
 }
 
+cp_to_linux()
+{
+	path_filename="$1"
+	path_dest_dir="/tmp"
+
+	echo "Copy $path_filename to $path_dest_dir(linux)"
+	scp -P 22 $path_filename root@192.168.105.100:$path_dest_dir
+}
+
+cp_from_linux()
+{
+	path_filename="$1"
+	path_source_dir="$2"
+
+	echo "Copy $path_filename from $path_source_dir(linux)"
+	scp -P 22 -r root@192.168.105.100:/$path_source_dir/$path_filename .
+}
+
 
 #########################
 #

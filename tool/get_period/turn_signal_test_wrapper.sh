@@ -18,7 +18,7 @@ fi
 
 
 while read line; do
-	if echo $line | grep TLTL | grep -q "\-,data,:"; then
+	echo $line ; then
                 if echo $line | grep -q "DID\":55"; then
 			# get timestamp
 			turn_on_signal=1
