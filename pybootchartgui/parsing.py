@@ -53,8 +53,6 @@ class Trace:
         self.mem_stats = None
 
         parse_paths (writer, self, paths)
-        if not self.valid():
-            raise ParseError("empty state: '%s' does not contain a valid bootchart" % ", ".join(paths))
 
         # Turn that parsed information into something more useful
         # link processes into a tree of pointers, calculate statistics
@@ -79,11 +77,11 @@ class Trace:
                     else:
                         self.times.append(None)
 
-        self.proc_tree = ProcessTree(writer, self.kernel, self.ps_stats,
-                                     self.ps_stats.sample_period,
-                                     self.headers.get("profile.process"),
-                                     options.prune, idle, self.taskstats,
-                                     self.parent_map is not None)
+        #self.proc_tree = ProcessTree(writer, self.kernel, self.ps_stats,
+        #                             self.ps_stats.sample_period,
+        #                             self.headers.get("profile.process"),
+        #                             options.prune, idle, self.taskstats,
+        #                             self.parent_map is not None)
 
         if self.kernel is not None:
             self.kernel_tree = ProcessTree(writer, self.kernel, None, 0,
@@ -134,12 +132,12 @@ class Trace:
                     process.ppid = ppid * 1000
 
         # stitch the tree together with pointers
-        for process in self.ps_stats.process_map.values():
-            process.set_parent (self.ps_stats.process_map)
+        #for process in self.ps_stats.process_map.values():
+        #    process.set_parent (self.ps_stats.process_map)
 
         # count on fingers variously
-        for process in self.ps_stats.process_map.values():
-            process.calc_stats (self.ps_stats.sample_period)
+        #for process in self.ps_stats.process_map.values():
+        #    process.calc_stats (self.ps_stats.sample_period)
 
     def crop(self, writer, crop_after):
 
@@ -420,6 +418,22 @@ def _parse_taskstats_log(writer, file):
 
     return ProcessStats (writer, processMap, len (timed_blocks), avgSampleLength, startTime, ltime)
 
+def _parse_qnx_proc_stat_log(file):
+    samples = []
+    ltimes = None
+    time = 0
+    for line in file.read().decode('utf-8').split('\n'):
+	    if not line :
+		    continue
+	    usage_cpu0=float(line.split()[3].split(',')[0].split('[')[1].split('%')[0])
+	    usage_cpu1=float(line.split()[3].split(',')[1].split('%')[0])
+	    #print(usage_cpu0, usage_cpu1)
+	    samples.append( CPUSample(time, usage_cpu0, usage_cpu1, 0) )
+            #samples.append( CPUSample(time, user/aSum, system/aSum, iowait/aSum) )
+	    time+=1
+
+    return samples
+
 def _parse_proc_stat_log(file):
     samples = []
     ltimes = None
@@ -670,7 +684,8 @@ def _do_parse(writer, state, name, file):
         state.ps_stats = _parse_taskstats_log(writer, file)
         state.taskstats = True
     elif name == "proc_stat.log":
-        state.cpu_stats = _parse_proc_stat_log(file)
+        #state.cpu_stats = _parse_proc_stat_log(file)
+        state.cpu_stats = _parse_qnx_proc_stat_log(file)
     elif name == "proc_meminfo.log":
         state.mem_stats = _parse_proc_meminfo_log(file)
     elif name == "dmesg":

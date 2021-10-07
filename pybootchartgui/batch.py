@@ -36,8 +36,10 @@ def render(writer, trace, app_options, filename):
 
     make_surface, write_surface = handlers[fmt]
     options = RenderOptions (app_options)
-    (w, h) = draw.extents (options, 1.0, trace)
-    w = max (w, draw.MIN_IMG_W)
+    #(w, h) = draw.extents (options, 1.0, trace)
+    #w = max (w, draw.MIN_IMG_W)
+    w = 5000
+    h = 1000
     surface = make_surface (w, h)
     ctx = cairo.Context (surface)
     draw.render (ctx, options, 1.0, trace)
