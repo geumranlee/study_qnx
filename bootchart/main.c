@@ -13,10 +13,10 @@
 #define COMM_BUF_SIZE 2048
 #define CMD_BUF_SIZE 2048
 
-// open /proc/@pid/comm and read value
 // open /proc/@pid/cmdline and read value
+// open /proc/@pid/exefile and read value
 // tbd 중복코드 통일
-void iterate_process(int pid, char* comm, char* cmdline)
+void iterate_process(int pid, char* cmdline, char* exefile)
 {
 	printf("wewake interate_process start\n");
 	
@@ -25,29 +25,11 @@ void iterate_process(int pid, char* comm, char* cmdline)
 	int i=0;
 	int ret;
 
-	//sprintf(paths, "./sample/%d/comm", pid);
-	sprintf(paths, "/proc/%d/comm", pid);
-	//printf("wewake paths: %s\n", paths);
-	fd = open(paths, O_RDONLY);
-	ret = read(fd, comm, 32);
-	if(ret == 0){
-		memset(comm,0,sizeof(comm));
-	}
-	printf("read length is %d\n",ret);
-
-	for (i=0; comm[i]!=0; i++) {
-		if(comm[i]=='\n') {
-			comm[i]=0;
-			break;
-		}
-	}
-	close(fd);
-
 	//sprintf(paths, "./sample/%d/cmdline", pid);
 	sprintf(paths, "/proc/%d/cmdline", pid);
 	//printf("wewake paths: %s\n", paths);
 	fd = open(paths, O_RDONLY);
-	ret = read(fd, cmdline, CMD_BUF_SIZE);
+	ret = read(fd, cmdline, 32);
 	if(ret == 0){
 		memset(cmdline,0,sizeof(cmdline));
 	}
@@ -60,6 +42,24 @@ void iterate_process(int pid, char* comm, char* cmdline)
 		}
 	}
 	close(fd);
+
+	//sprintf(paths, "./sample/%d/exefile", pid);
+	sprintf(paths, "/proc/%d/exefile", pid);
+	//printf("wewake paths: %s\n", paths);
+	fd = open(paths, O_RDONLY);
+	ret = read(fd, exefile, CMD_BUF_SIZE);
+	if(ret == 0){
+		memset(exefile,0,sizeof(exefile));
+	}
+	printf("read length is %d\n",ret);
+
+	for (i=0; exefile[i]!=0; i++) {
+		if(exefile[i]=='\n') {
+			exefile[i]=0;
+			break;
+		}
+	}
+	close(fd);
 }
 
 int main(int argc, char** argv)
@@ -68,8 +68,8 @@ int main(int argc, char** argv)
   	DIR *dir;
   	int r;
   	int pid;
-	char comm[32];
 	char cmdline[32];
+	char exefile[32];
 	char logpath[32]={0,};
 	char proc_data[4096]={0,};
 	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
@@ -86,9 +86,10 @@ int main(int argc, char** argv)
 
 	sprintf(logpath, "./testlog");
 	//log_fd = open(logpath, O_CREAT | O_WRONLY, mode);
-	log_fd = open(logpath, O_TRUNC | O_WRONLY, mode);
+	log_fd = open(logpath, O_CREAT | O_TRUNC | O_WRONLY, mode);
 	if ( 0 > log_fd){
 		printf("file open failed.\n");
+		perror(NULL);
    		exit (EXIT_FAILURE);
 	}
 
@@ -96,8 +97,8 @@ int main(int argc, char** argv)
   	// 2) we are only interested in process IDs
   		if (isdigit (*dirent -> d_name)) {
     			pid = atoi (dirent -> d_name);
-    			iterate_process(pid, comm, cmdline);
-			sprintf(proc_data, "%d,%s,%s\n", pid, comm, cmdline);
+    			iterate_process(pid, cmdline, exefile);
+			sprintf(proc_data, "%d,%s,%s\n", pid, cmdline, exefile);
 			//printf("proc_data size=%d", sizeof(proc_data));
 			for (i=0; proc_data[i]!=0; i++) {
 				if(proc_data[i]=='\n') {
