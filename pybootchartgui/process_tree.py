@@ -38,7 +38,7 @@ class ProcessTree:
     EXPLODER_PROCESSES = set(['hwup'])
 
     def __init__(self, writer, kernel, psstats, sample_period,
-                 monitoredApp, prune, idle, taskstats,
+                 prune, idle, taskstats,
                  accurate_parentage, for_testing = False):
         self.writer = writer
         self.process_tree = []
@@ -53,6 +53,10 @@ class ProcessTree:
         self.sample_period = sample_period
 
         self.build()
+	for proc in self.process_tree:
+		print(proc)
+	for proc in self.process_list:
+		print(proc)
         if not accurate_parentage:
             self.update_ppids_for_daemons(self.process_list)
 
@@ -60,11 +64,12 @@ class ProcessTree:
         self.end_time = self.get_end_time(self.process_tree)
         self.duration = self.end_time - self.start_time
         self.idle = idle
+        writer.status("process_tree.py - start_time %d, end_time %d, duration %d" % (self.start_time, self.end_time, self.duration))
 
         if for_testing:
             return
 
-        removed = self.merge_logger(self.process_tree, self.LOGGER_PROC, monitoredApp, False)
+        removed = self.merge_logger(self.process_tree, self.LOGGER_PROC, "qnx", False)
         writer.status("merged %i logger processes" % removed)
 
         if prune:
@@ -79,6 +84,7 @@ class ProcessTree:
         self.start_time = self.get_start_time(self.process_tree)
         self.end_time = self.get_end_time(self.process_tree)
         self.duration = self.end_time - self.start_time
+        writer.status("process_tree.py - start_time %d, end_time %d, duration %d" % (self.start_time, self.end_time, self.duration))
 
         self.num_proc = self.num_nodes(self.process_tree)
 
@@ -120,7 +126,10 @@ class ProcessTree:
         """
         if not process_subtree:
             return -100000000
-        return max( [max(proc.start_time + proc.duration, self.get_end_time(proc.child_list)) for proc in process_subtree] )
+        end_time = max( [max(proc.start_time + proc.duration, self.get_end_time(proc.child_list)) for proc in process_subtree] )
+	print(proc.start_time,proc.duration,self.get_end_time(proc.child_list),end_time)
+	return end_time
+        #return max( [max(proc.start_time + 100, self.get_end_time(proc.child_list)) for proc in process_subtree] )
 
     def get_max_pid(self, process_subtree):
         """Returns the max PID found in the process tree."""

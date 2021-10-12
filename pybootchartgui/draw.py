@@ -178,8 +178,10 @@ def draw_sec_labels(ctx, rect, sec_w, nsecs):
 	ctx.set_font_size(AXIS_FONT_SIZE)
 	prev_x = 0
 	for i in range(0, rect[2] + 1, sec_w):
+		print(i)
 		if ((i / sec_w) % nsecs == 0) :
 			label = "%ds" % (i / sec_w)
+			print(i,sec_w,nsecs,label)
 			label_w = ctx.text_extents(label)[2]
 			x = rect[0] + i - label_w/2
 			if x >= prev_x:
@@ -280,6 +282,7 @@ OPTIONS = None
 def extents(options, xscale, trace):
 	proc_tree = options.proc_tree(trace)
 	w = int (proc_tree.duration * sec_w_base * xscale / 100) + 2*off_x
+	print(proc_tree.duration,sec_w_base,xscale,off_x)
 	h = proc_h * proc_tree.num_proc + 2 * off_y
 	if options.charts:
 		h += header_h
@@ -383,6 +386,7 @@ def render_charts(ctx, options, clip, trace, curr_y, w, h, sec_w):
 #
 def render(ctx, options, xscale, trace):
 	(w, h) = extents (options, xscale, trace)
+	print "draw.py - (w, h, xscale)=(%d, %d, %d)" % (w, h, xscale)
 	global OPTIONS
 	OPTIONS = options.app_options
 
@@ -402,13 +406,7 @@ def render(ctx, options, xscale, trace):
 	else:
 		duration = proc_tree.duration
 
-	if not options.kernel_only:
-		curr_y = draw_header (ctx, trace.headers, duration)
-	else:
-		curr_y = off_y;
-
-	if options.charts:
-		curr_y = render_charts (ctx, options, clip, trace, curr_y, w, h, sec_w)
+	curr_y = off_y;
 
 	# draw process boxes
 	proc_height = h
@@ -422,17 +420,6 @@ def render(ctx, options, xscale, trace):
 	ctx.set_font_size(SIG_FONT_SIZE)
 	draw_text(ctx, SIGNATURE, SIG_COLOR, off_x + 5, proc_height - 8)
 
-	# draw a cumulative CPU-time-per-process graph
-	if proc_tree.taskstats and options.cumulative:
-		cuml_rect = (off_x, curr_y + off_y, w, CUML_HEIGHT/2 - off_y * 2)
-		if clip_visible (clip, cuml_rect):
-			draw_cuml_graph(ctx, proc_tree, cuml_rect, duration, sec_w, STAT_TYPE_CPU)
-
-	# draw a cumulative I/O-time-per-process graph
-	if proc_tree.taskstats and options.cumulative:
-		cuml_rect = (off_x, curr_y + off_y * 100, w, CUML_HEIGHT/2 - off_y * 2)
-		if clip_visible (clip, cuml_rect):
-			draw_cuml_graph(ctx, proc_tree, cuml_rect, duration, sec_w, STAT_TYPE_IO)
 
 def draw_process_bar_chart(ctx, clip, options, proc_tree, times, curr_y, w, h, sec_w):
 	header_size = 0
@@ -450,7 +437,9 @@ def draw_process_bar_chart(ctx, clip, options, proc_tree, times, curr_y, w, h, s
 	chart_rect = [off_x, curr_y + header_size + 15,
 		      w, h - 2 * off_y - (curr_y + header_size + 15) + proc_h]
 	ctx.set_font_size (PROC_TEXT_FONT_SIZE)
+	print(chart_rect)
 
+	print "draw.py - x,y,w,h, sec_w= : %d,%d,%d,%d,%d" % (off_x, curr_y, w, h, sec_w)
 	draw_box_ticks (ctx, chart_rect, sec_w)
 	if sec_w > 100:
 		nsec = 1
@@ -490,8 +479,7 @@ def draw_header (ctx, headers, duration):
     dur = duration / 100.0
     txt = 'time : %02d:%05.2f' % (math.floor(dur/60), dur - 60 * math.floor(dur/60))
     if headers.get('system.maxpid') is not None:
-        txt = txt + '      max pid: %s' % (headers.get('system.maxpid'))
-
+	    txt = txt + '      max pid: %s' % (headers.get('system.maxpid'))
     header_y += ctx.font_extents()[2]
     draw_text (ctx, txt, TEXT_COLOR, off_x, header_y)
 
@@ -500,6 +488,11 @@ def draw_header (ctx, headers, duration):
 def draw_processes_recursively(ctx, proc, proc_tree, y, proc_h, rect, clip) :
 	x = rect[0] +  ((proc.start_time - proc_tree.start_time) * rect[2] / proc_tree.duration)
 	w = ((proc.duration) * rect[2] / proc_tree.duration)
+
+	print "draw.py - rect[0]= %d, rect[2]= %d" % (rect[0], rect[2])
+	print "draw.py - proc.start_time= %d, proc.duration= %d" % (proc.start_time, proc.duration)
+	print "draw.py - proc_tee.start_time=%d, proc_tree.duration=%d" % (proc_tree.start_time, proc_tree.duration)
+	print "draw.py - x= %d, y=%d, w=%d, h=%d" % (x, y, w, proc_h)
 
 	draw_process_activity_colors(ctx, proc, proc_tree, x, y, w, proc_h, rect, clip)
 	draw_rect(ctx, PROC_BORDER_COLOR, (x, y, w, proc_h))
@@ -536,34 +529,6 @@ def draw_process_activity_colors(ctx, proc, proc_tree, x, y, w, proc_h, rect, cl
 
 	draw_fill_rect(ctx, PROC_COLOR_S, (x, y, w, proc_h))
 
-	last_tx = -1
-	for sample in proc.samples :
-		tx = rect[0] + round(((sample.time - proc_tree.start_time) * rect[2] / proc_tree.duration))
-
-		# samples are sorted chronologically
-		if tx < clip[0]:
-			continue
-		if tx > clip[0] + clip[2]:
-			break
-
-		tw = round(proc_tree.sample_period * rect[2] / float(proc_tree.duration))
-		if last_tx != -1 and abs(last_tx - tx) <= tw:
-			tw -= last_tx - tx
-			tx = last_tx
-		tw = max (tw, 1) # nice to see at least something
-
-		last_tx = tx + tw
-		state = get_proc_state( sample.state )
-
-		color = STATE_COLORS[state]
-		if state == STATE_RUNNING:
-			alpha = min (sample.cpu_sample.user + sample.cpu_sample.sys, 1.0)
-			color = tuple(list(PROC_COLOR_R[0:3]) + [alpha])
-#			print "render time %d [ tx %d tw %d ], sample state %s color %s alpha %g" % (sample.time, tx, tw, state, color, alpha)
-		elif state == STATE_SLEEPING:
-			continue
-
-		draw_fill_rect(ctx, color, (tx, y, tw, proc_h))
 
 def draw_process_connecting_lines(ctx, px, py, x, y, proc_h):
 	ctx.set_source_rgba(*DEP_COLOR)

@@ -53,8 +53,6 @@ class Trace:
         self.mem_stats = None
 
         parse_paths (writer, self, paths)
-        if not self.valid():
-            raise ParseError("empty state: '%s' does not contain a valid bootchart" % ", ".join(paths))
 
         # Turn that parsed information into something more useful
         # link processes into a tree of pointers, calculate statistics
@@ -79,9 +77,9 @@ class Trace:
                     else:
                         self.times.append(None)
 
+        print "parsing.py - sample_period=%d" % self.ps_stats.sample_period
         self.proc_tree = ProcessTree(writer, self.kernel, self.ps_stats,
                                      self.ps_stats.sample_period,
-                                     self.headers.get("profile.process"),
                                      options.prune, idle, self.taskstats,
                                      self.parent_map is not None)
 
@@ -140,6 +138,8 @@ class Trace:
         # count on fingers variously
         for process in self.ps_stats.process_map.values():
             process.calc_stats (self.ps_stats.sample_period)
+	    print("process %s,%s"%(process, process.duration))
+
 
     def crop(self, writer, crop_after):
 
@@ -348,11 +348,15 @@ def _parse_taskstats_log(writer, file):
     for time, lines in timed_blocks:
         # we have no 'stime' from taskstats, so prep 'init'
         if ltime is None:
+	    # writer, pid, cmd, ppid, start-time
             process = Process(writer, 1, '[init]', 0, 0)
+	#
             processMap[1000] = process
             ltime = time
 #                       continue
+	print "[_parse_taskstats_log] time=",time
         for line in lines:
+	    print "[_parse_taskstats_log] ","readed line=",line
             if not line: continue
             tokens = line.split(' ')
             if len(tokens) != 6:
@@ -360,6 +364,7 @@ def _parse_taskstats_log(writer, file):
 
             opid, ppid, cmd = int(tokens[0]), int(tokens[1]), tokens[2]
             cpu_ns, blkio_delay_ns, swapin_delay_ns = long(tokens[-3]), long(tokens[-2]), long(tokens[-1]),
+            #cpu_ns, blkio_delay_ns, swapin_delay_ns = long(tokens[-3]), long(tokens[-2]), 0,
 
             # make space for trees of pids
             opid *= 1000
@@ -400,12 +405,13 @@ def _parse_taskstats_log(writer, file):
 
             # retain the ns timing information into a CPUSample - that tries
             # with the old-style to be a %age of CPU used in this time-slice.
-            if delta_cpu_ns + delta_blkio_delay_ns + delta_swapin_delay_ns > 0:
+            if delta_cpu_ns + delta_blkio_delay_ns + delta_swapin_delay_ns > 0 or True :
 #                               print "proc %s cpu_ns %g delta_cpu %g" % (cmd, cpu_ns, delta_cpu_ns)
                 cpuSample = CPUSample('null', delta_cpu_ns, 0.0,
                                       delta_blkio_delay_ns,
                                       delta_swapin_delay_ns)
                 process.samples.append(ProcessSample(time, state, cpuSample))
+		print "[_parse_taskstats_log] time",time,"state",state,"cpuSample",cpuSample
 
             process.last_cpu_ns = cpu_ns
             process.last_blkio_delay_ns = blkio_delay_ns
@@ -417,6 +423,8 @@ def _parse_taskstats_log(writer, file):
 
     startTime = timed_blocks[0][0]
     avgSampleLength = (ltime - startTime)/(len(timed_blocks)-1)
+
+    writer.warn("parsing.py - startTime=%d, avgSampleLength=%d, timed_blocks len=%d" % (startTime, avgSampleLength, (len(timed_blocks))))
 
     return ProcessStats (writer, processMap, len (timed_blocks), avgSampleLength, startTime, ltime)
 
