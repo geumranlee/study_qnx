@@ -271,7 +271,8 @@ def draw_chart(ctx, color, fill, chart_bounds, data, proc_tree, data_range):
 		ctx.fill()
 	else:
 		ctx.stroke()
-	ctx.set_line_width(10.0)
+	#ctx.set_line_width(10.0)
+	ctx.set_line_width(1.0)
 
 bar_h = 55
 meminfo_bar_h = 2 * bar_h
@@ -316,7 +317,7 @@ def render_charts(ctx, options, clip, trace, curr_y, w, h, sec_w):
 	# render I/O wait
 	chart_rect = (off_x, curr_y+30, w, bar_h)
 	if clip_visible (clip, chart_rect):
-		draw_box_ticks (ctx, chart_rect, sec_w)
+		#draw_box_ticks (ctx, chart_rect, sec_w)
 		#draw_annotations (ctx, proc_tree, trace.times, chart_rect)
 		#print(trace.cpu_stats)
 		#draw_chart (ctx, IO_COLOR, True, chart_rect, \
@@ -327,6 +328,7 @@ def render_charts(ctx, options, clip, trace, curr_y, w, h, sec_w):
 			    [(sample.time, sample.user + sample.sys) for sample in trace.cpu_stats], \
 			    None, None)
 
+	curr_y = curr_y + 30 + bar_h
 	return curr_y
 
 #
@@ -344,28 +346,23 @@ def render(ctx, options, xscale, trace):
 	clip = ctx.clip_extents()
 
 	sec_w = int (xscale * sec_w_base)
-	#ctx.set_line_width(1.0)
-	ctx.set_line_width(10.0)
+	ctx.set_line_width(1.0)
 	ctx.select_font_face(FONT_NAME)
 	draw_fill_rect(ctx, WHITE, (0, 0, max(w, MIN_IMG_W), h))
 	w -= 2*off_x
 	# draw the title and headers
-	duration = 5
-	cpu_w = 1000
-	cpu_h = 400
-
-	curr_y = off_y;
-	curr_y = render_charts (ctx, options, clip, trace, curr_y, cpu_w, cpu_h, sec_w)
-	if options.charts:
-		curr_y = render_charts (ctx, options, clip, trace, curr_y, cpu_w, cpu_h, sec_w)
-
-
 	if proc_tree.idle:
 		duration = proc_tree.idle
 	else:
 		duration = proc_tree.duration
 
+	cpu_w = 1000
+	cpu_h = 400
+
 	curr_y = off_y;
+
+	if options.charts:
+		curr_y = render_charts (ctx, options, clip, trace, curr_y, cpu_w, cpu_h, sec_w)
 
 	# draw process boxes
 	proc_height = h
@@ -375,56 +372,10 @@ def render(ctx, options, xscale, trace):
 	draw_process_bar_chart(ctx, clip, options, proc_tree, trace.times,
 			       curr_y, w, proc_height, sec_w)
 
-	curr_y = proc_height
-	ctx.set_font_size(SIG_FONT_SIZE)
-	draw_text(ctx, SIGNATURE, SIG_COLOR, off_x + 5, proc_height - 8)
+	#curr_y = proc_height
+	#ctx.set_font_size(SIG_FONT_SIZE)
+	#draw_text(ctx, SIGNATURE, SIG_COLOR, off_x + 5, proc_height - 8)
 
-def cpu_render(ctx, options, xscale, trace):
-	(w, h) = extents (options, xscale, trace)
-	print "draw.py - (w, h, xscale)=(%d, %d, %d)" % (w, h, xscale)
-	global OPTIONS
-	OPTIONS = options.app_options
-
-	proc_tree = options.proc_tree (trace)
-
-	# x, y, w, h
-	clip = ctx.clip_extents()
-
-	sec_w = int (xscale * sec_w_base)
-	#ctx.set_line_width(1.0)
-	ctx.set_line_width(10.0)
-	ctx.select_font_face(FONT_NAME)
-	draw_fill_rect(ctx, WHITE, (0, 0, max(w, MIN_IMG_W), h))
-	w -= 2*off_x
-	# draw the title and headers
-	duration = 5
-	cpu_w = 1000
-	cpu_h = 400
-
-	curr_y = off_y;
-	curr_y = render_charts (ctx, options, clip, trace, curr_y, cpu_w, cpu_h, sec_w)
-	if options.charts:
-		curr_y = render_charts (ctx, options, clip, trace, curr_y, cpu_w, cpu_h, sec_w)
-
-
-	if proc_tree.idle:
-		duration = proc_tree.idle
-	else:
-		duration = proc_tree.duration
-
-	curr_y = off_y;
-
-	# draw process boxes
-	proc_height = h
-	if proc_tree.taskstats and options.cumulative:
-		proc_height -= CUML_HEIGHT
-
-	draw_process_bar_chart(ctx, clip, options, proc_tree, trace.times,
-			       curr_y, w, proc_height, sec_w)
-
-	curr_y = proc_height
-	ctx.set_font_size(SIG_FONT_SIZE)
-	draw_text(ctx, SIGNATURE, SIG_COLOR, off_x + 5, proc_height - 8)
 
 def draw_process_bar_chart(ctx, clip, options, proc_tree, times, curr_y, w, h, sec_w):
 	header_size = 0
@@ -499,7 +450,7 @@ def draw_processes_recursively(ctx, proc, proc_tree, y, proc_h, rect, clip) :
 	print "draw.py - proc_tee.start_time=%d, proc_tree.duration=%d" % (proc_tree.start_time, proc_tree.duration)
 	print "draw.py - x= %d, y=%d, w=%d, h=%d" % (x, y, w, proc_h)
 
-	draw_process_activity_colors(ctx, proc, proc_tree, x, y, w, proc_h, rect, clip)
+	#draw_process_activity_colors(ctx, proc, proc_tree, x, y, w, proc_h, rect, clip)
 	draw_rect(ctx, PROC_BORDER_COLOR, (x, y, w, proc_h))
 	ipid = int(proc.pid)
 	if not OPTIONS.show_all:
@@ -521,7 +472,7 @@ def draw_processes_recursively(ctx, proc, proc_tree, y, proc_h, rect, clip) :
 		if next_y > clip[1] + clip[3]:
 			break
 		child_x, child_y = draw_processes_recursively(ctx, child, proc_tree, next_y, proc_h, rect, clip)
-		draw_process_connecting_lines(ctx, x, y, child_x, child_y, proc_h)
+		#draw_process_connecting_lines(ctx, x, y, child_x, child_y, proc_h)
 		next_y = next_y + proc_h * proc_tree.num_nodes([child])
 
 	return x, y

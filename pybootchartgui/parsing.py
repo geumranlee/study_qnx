@@ -276,6 +276,7 @@ def _parse_timed_blocks(file):
         except ValueError:
             raise ParseError("expected a timed-block, but timestamp '%s' is not an integer" % lines[0])
     blocks = file.read().decode('utf-8').split('\n\n')
+    print blocks
     return [parse(block) for block in blocks if block.strip() and not block.endswith(' not running\n')]
 
 def _parse_proc_ps_log(writer, file):
@@ -349,7 +350,7 @@ def _parse_taskstats_log(writer, file):
         # we have no 'stime' from taskstats, so prep 'init'
         if ltime is None:
 	    # writer, pid, cmd, ppid, start-time
-            process = Process(writer, 1, '[init]', 0, 0)
+            process = Process(writer, 1, '[init]', 0, time)
 	#
             processMap[1000] = process
             ltime = time

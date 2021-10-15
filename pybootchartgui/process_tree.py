@@ -79,6 +79,7 @@ class ProcessTree:
             p_runs = self.merge_runs(self.process_tree)
             writer.status("pruned %i process, %i exploders, %i threads, and %i runs" % (p_processes, p_exploders, p_threads, p_runs))
 
+	print self.process_tree
         self.sort(self.process_tree)
 
         self.start_time = self.get_start_time(self.process_tree)
